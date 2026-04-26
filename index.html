@@ -3,241 +3,672 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Build: Agents Building Agents</title>
+    <title>Live Build · Agents Building Agents</title>
     <!--
       CONFIG — swap these before publishing:
         WORKSHOP_EMAIL  → e.g. workshop@yourdomain.com (Google Workspace alias)
         WORKSHOP_DATE   → e.g. Saturday, May 9
         STRIPE_LINK_*   → Stripe Payment Link URLs (Dashboard → Payment Links)
     -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        brand: {
-                            400: '#818cf8',
-                            500: '#6366f1',
-                            600: '#4f46e5',
+                        ink: {
+                            950: '#0c0b0a',
+                            900: '#15120f',
+                            800: '#1f1b16',
+                            700: '#2a251f',
+                        },
+                        paper: {
+                            50:  '#f3ead8',
+                            300: '#c8bfae',
+                            500: '#857d6e',
+                        },
+                        ember: {
+                            300: '#ffb070',
+                            500: '#ff7a18',
                         }
+                    },
+                    fontFamily: {
+                        sans:    ['Fraunces', 'Georgia', 'serif'],
+                        serif:   ['Fraunces', 'Georgia', 'serif'],
+                        display: ['Fraunces', 'Georgia', 'serif'],
+                        mono:    ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
                     }
                 }
             }
         }
     </script>
+    <style>
+        /* FOUC guard — render acceptably before Tailwind/fonts arrive */
+        html, body { background: #0c0b0a; color: #c8bfae; }
+        body { font-family: 'Fraunces', Georgia, serif; }
+
+        /* Subtle warm grain — the layer that kills the "flat screen" feel */
+        .grain {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.95   0 0 0 0 0.92   0 0 0 0 0.85   0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+            background-size: 240px 240px;
+        }
+
+        /* Hero atmospheric glow */
+        .ember-glow {
+            background: radial-gradient(ellipse at 75% 0%, rgba(255,122,24,0.10) 0%, rgba(255,122,24,0.04) 28%, transparent 60%);
+        }
+
+        /* Optical-size headline using Fraunces' opsz axis */
+        .display {
+            font-family: 'Fraunces', Georgia, serif;
+            font-variation-settings: "opsz" 144, "wght" 480, "SOFT" 30;
+            font-feature-settings: "ss01", "liga", "dlig";
+            letter-spacing: -0.025em;
+            line-height: 0.95;
+        }
+        .display em {
+            font-variation-settings: "opsz" 144, "wght" 380, "SOFT" 100;
+            font-style: italic;
+            color: #ffb070;
+        }
+        .prose-serif {
+            font-variation-settings: "opsz" 22, "wght" 380;
+        }
+
+        /* Stagger reveal */
+        @keyframes rise {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .rise { opacity: 0; animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) forwards; }
+        .rise-1 { animation-delay: 0.05s; }
+        .rise-2 { animation-delay: 0.15s; }
+        .rise-3 { animation-delay: 0.28s; }
+        .rise-4 { animation-delay: 0.42s; }
+        .rise-5 { animation-delay: 0.55s; }
+
+        /* Headline caret */
+        @keyframes caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+        .caret {
+            display: inline-block;
+            width: 0.45ch;
+            height: 0.85em;
+            background: #ff7a18;
+            transform: translateY(-0.04em);
+            margin-left: 0.12em;
+            animation: caret 1.06s steps(1, end) infinite;
+            box-shadow: 0 0 18px rgba(255,122,24,0.55);
+        }
+
+        /* Recursive diagram pulse */
+        @keyframes pulse-node {
+            0%, 100% { r: 4.5; opacity: 0.55; filter: drop-shadow(0 0 0 rgba(255,122,24,0)); }
+            50%      { r: 6.5; opacity: 1;    filter: drop-shadow(0 0 8px rgba(255,122,24,0.85)); }
+        }
+        .node { fill: #ff7a18; transform-origin: center; animation: pulse-node 2.8s ease-in-out infinite; }
+        .node-1 { animation-delay: 0s;    }
+        .node-2 { animation-delay: 0.93s; }
+        .node-3 { animation-delay: 1.86s; }
+
+        @keyframes flow-dash { to { stroke-dashoffset: -16; } }
+        .arc { stroke: #2a251f; stroke-width: 1; fill: none; stroke-dasharray: 4 4; animation: flow-dash 6s linear infinite; }
+
+        /* Animated link underline */
+        .ulink {
+            position: relative;
+            color: #ffb070;
+            text-decoration: none;
+            transition: color 0.18s ease;
+        }
+        .ulink::after {
+            content: "";
+            position: absolute;
+            left: 0; right: 0; bottom: -2px;
+            height: 1px;
+            background: currentColor;
+            transform: scaleX(0.4);
+            transform-origin: left;
+            opacity: 0.5;
+            transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.18s ease;
+        }
+        .ulink:hover { color: #ff7a18; }
+        .ulink:hover::after { transform: scaleX(1); opacity: 1; }
+
+        /* Section divider with floating § marker */
+        .rule {
+            position: relative;
+            border-top: 1px solid #1f1b16;
+        }
+        .rule .rule-mark {
+            position: absolute;
+            top: -0.7rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #0c0b0a;
+            padding: 0 0.9rem;
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+            font-size: 0.68rem;
+            letter-spacing: 0.22em;
+            color: #857d6e;
+        }
+
+        /* Editorial card — rejecting the rounded-2xl SaaS look */
+        .ed-card {
+            background: #15120f;
+            border: 1px solid #1f1b16;
+            position: relative;
+        }
+        .ed-card::before {
+            content: "";
+            position: absolute;
+            inset: 6px;
+            border: 1px solid transparent;
+            pointer-events: none;
+        }
+
+        /* Dotted leader rows for the logistics block */
+        .kv {
+            display: flex;
+            align-items: baseline;
+            gap: 0.7rem;
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+            font-size: 0.83rem;
+        }
+        .kv .k { color: #f3ead8; letter-spacing: 0.04em; }
+        .kv .leader { flex: 1; border-bottom: 1px dotted #2a251f; transform: translateY(-3px); }
+        .kv .v { color: #c8bfae; text-align: right; }
+
+        /* Pricing card lift */
+        .price-card {
+            transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1), border-color 0.3s ease;
+        }
+        .price-card:hover { transform: translateY(-3px); border-color: #2a251f; }
+        .price-card .top-rule {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: #ff7a18;
+            opacity: 0;
+            transition: opacity 0.35s ease;
+        }
+        .price-card:hover .top-rule { opacity: 0.55; }
+        .price-card.featured .top-rule { opacity: 1; }
+        .price-card.featured:hover .top-rule { opacity: 1; }
+
+        /* Tabular price number */
+        .price-num {
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+            font-feature-settings: "tnum", "zero";
+            font-weight: 500;
+            letter-spacing: -0.02em;
+        }
+
+        /* FAQ accordion */
+        details.qa { border-top: 1px solid #1f1b16; padding: 1.4rem 0; }
+        details.qa[open] { padding-bottom: 1.7rem; }
+        details.qa > summary {
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 1.5rem;
+            font-variation-settings: "opsz" 36, "wght" 460;
+            font-size: 1.18rem;
+            color: #f3ead8;
+        }
+        details.qa > summary::-webkit-details-marker { display: none; }
+        details.qa > summary::after {
+            content: "+";
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            color: #857d6e;
+            transition: transform 0.25s ease, color 0.2s ease;
+        }
+        details.qa[open] > summary::after { content: "−"; color: #ff7a18; }
+        details.qa > summary:hover::after { color: #ff7a18; }
+        details.qa .ans {
+            margin-top: 0.9rem;
+            color: #c8bfae;
+            font-variation-settings: "opsz" 22, "wght" 380;
+            line-height: 1.65;
+            max-width: 60ch;
+        }
+
+        /* Buttons */
+        .btn {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            padding: 1.05rem 1.6rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.65rem;
+            border: 1px solid transparent;
+            transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+        .btn-primary {
+            background: #ff7a18;
+            color: #15120f;
+            font-weight: 600;
+            box-shadow: 0 0 0 0 rgba(255,122,24,0.0);
+        }
+        .btn-primary:hover { background: #ffb070; transform: translateY(-1px); }
+        .btn-ghost {
+            color: #f3ead8;
+            border-color: #2a251f;
+        }
+        .btn-ghost:hover { border-color: #857d6e; color: #ff7a18; }
+
+        /* Mono caption */
+        .cap {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: #857d6e;
+        }
+
+        /* Section number marginalia */
+        .marginalia {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: #857d6e;
+            line-height: 1.6;
+        }
+        .marginalia .num {
+            display: block;
+            font-size: 0.82rem;
+            color: #ff7a18;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .rise, .caret, .node, .arc, .price-card, .ulink::after, .btn {
+                animation: none !important;
+                transition: none !important;
+            }
+            .rise { opacity: 1; transform: none; }
+        }
+
+        /* Selection */
+        ::selection { background: rgba(255,122,24,0.42); color: #f3ead8; }
+    </style>
 </head>
-<body class="bg-slate-950 text-slate-300 font-sans antialiased selection:bg-brand-500 selection:text-white">
+<body class="bg-ink-950 text-paper-300 antialiased relative overflow-x-hidden">
 
-    <!-- Hero Section -->
-    <header class="max-w-4xl mx-auto px-6 pt-24 pb-16 text-center">
-        <div class="inline-block mb-4 px-3 py-1 rounded-full border border-brand-500/30 bg-brand-500/10 text-brand-400 text-sm font-medium tracking-wide">
-            Live Working Session • WORKSHOP_DATE • 9:00 AM PT
-        </div>
-        <h1 class="text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-6 leading-tight">
-            Agents Building <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-cyan-400">Agents</span>
-        </h1>
-        <p class="text-xl md:text-2xl text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Stop just prompting LLMs. Watch agents build an agent harness — Python execution sandbox, RAG memory, extensible tools — then adapt it to your stack.
-        </p>
-        <div class="flex flex-col sm:flex-row justify-center gap-4">
-            <a href="#pricing" class="px-8 py-4 bg-white text-slate-900 font-bold rounded-lg hover:bg-slate-200 transition shadow-[0_0_20px_rgba(255,255,255,0.3)]">
-                Get Your Ticket
-            </a>
-            <a href="#details" class="px-8 py-4 bg-slate-900 border border-slate-700 text-white font-semibold rounded-lg hover:bg-slate-800 transition">
-                See the Curriculum
-            </a>
-        </div>
-    </header>
+    <!-- Atmospheric layers -->
+    <div class="grain fixed inset-0 pointer-events-none opacity-[0.045] z-[1]"></div>
+    <div class="ember-glow absolute top-0 left-0 right-0 h-[640px] pointer-events-none z-[0]"></div>
 
-    <!-- Details Section -->
-    <section id="details" class="max-w-4xl mx-auto px-6 py-16 border-t border-slate-800/50">
-        <div class="grid md:grid-cols-2 gap-12">
-            <div>
-                <h2 class="text-3xl font-bold text-white mb-6">What we're actually doing</h2>
-                <p class="mb-4 text-lg">This isn't a slide deck presentation. It's a 2-hour live implementation session.</p>
-                <p class="mb-6 text-lg">We spend the first hour building together, then a full hour of deep Q&A. The starter codebase is shared at the start of the session — your environment just needs to be ready (see <a href="#requirements" class="text-brand-400 hover:text-brand-300">Requirements</a>).</p>
+    <div class="relative z-[2]">
 
-                <ul class="space-y-4">
-                    <li class="flex items-start">
-                        <svg class="w-6 h-6 text-brand-400 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span><strong>The Sandbox:</strong> A Python execution environment running in Docker.</span>
-                    </li>
-                    <li class="flex items-start">
-                        <svg class="w-6 h-6 text-brand-400 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span><strong>The Loop:</strong> Wiring an LLM to write, run, and read code output.</span>
-                    </li>
-                    <li class="flex items-start">
-                        <svg class="w-6 h-6 text-brand-400 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span><strong>The Memory:</strong> A RAG database so the agent can look things up.</span>
-                    </li>
-                    <li class="flex items-start">
-                        <svg class="w-6 h-6 text-brand-400 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span><strong>The Handoff:</strong> Extra tools, then adapting the harness for your stack.</span>
-                    </li>
-                </ul>
+        <!-- Top rail -->
+        <div class="max-w-6xl mx-auto px-6 pt-7 flex items-center justify-between">
+            <div class="cap">
+                <span class="text-paper-50">Δ</span>&nbsp;&nbsp;Field&nbsp;Notes&nbsp;·&nbsp;Vol.&nbsp;01
             </div>
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 flex flex-col justify-center">
-                <h3 class="text-xl font-bold text-white mb-4">Event Logistics</h3>
-                <div class="space-y-4 text-slate-400">
-                    <p><strong class="text-slate-200">Date:</strong> WORKSHOP_DATE</p>
-                    <p><strong class="text-slate-200">Time:</strong> 9:00 AM PT / 12:00 PM ET<br><span class="text-sm">(5:00 PM UK / 9:30 PM IST)</span></p>
-                    <p><strong class="text-slate-200">Format:</strong> 60m Build + 60m Q&A (2 hours)</p>
-                    <p><strong class="text-slate-200">Location:</strong> Zoom (Link on purchase)</p>
-                    <p><strong class="text-slate-200">Replay:</strong> Included for all attendees</p>
+            <div class="cap hidden sm:block">
+                Δ-V&nbsp;Workshop&nbsp;·&nbsp;<span class="text-paper-50">WORKSHOP_DATE</span>
+            </div>
+        </div>
+
+        <!-- Hero -->
+        <header class="max-w-6xl mx-auto px-6 pt-20 pb-24 md:pt-28 md:pb-32">
+            <div class="grid grid-cols-12 gap-6 md:gap-10">
+
+                <aside class="col-span-12 md:col-span-3 marginalia rise rise-1">
+                    <span class="num">§ 00</span>
+                    The&nbsp;Brief<br>
+                    A&nbsp;live&nbsp;build,<br>
+                    not&nbsp;a&nbsp;deck.
+                </aside>
+
+                <div class="col-span-12 md:col-span-9">
+                    <div class="cap rise rise-1 mb-6">
+                        <span class="text-ember-500">●</span>&nbsp;&nbsp;Live&nbsp;Working&nbsp;Session&nbsp;&nbsp;·&nbsp;&nbsp;<span class="text-paper-50">WORKSHOP_DATE</span>&nbsp;&nbsp;·&nbsp;&nbsp;09:00&nbsp;PT
+                    </div>
+
+                    <h1 class="display text-paper-50 text-[3.4rem] sm:text-7xl md:text-[6.2rem] lg:text-[7.4rem] rise rise-2 mb-8">
+                        Agents<br>
+                        <em>building</em><br>
+                        Agents<span class="caret" aria-hidden="true"></span>
+                    </h1>
+
+                    <!-- Recursive loop diagram -->
+                    <svg viewBox="0 0 220 90" class="block w-44 h-auto mb-9 rise rise-3" aria-hidden="true">
+                        <path class="arc" d="M 22 70 Q 60 5 110 22"></path>
+                        <path class="arc" d="M 110 22 Q 160 38 198 70"></path>
+                        <path class="arc" d="M 198 70 Q 110 95 22 70"></path>
+                        <circle class="node node-1" cx="22"  cy="70" r="4.5"></circle>
+                        <circle class="node node-2" cx="110" cy="22" r="4.5"></circle>
+                        <circle class="node node-3" cx="198" cy="70" r="4.5"></circle>
+                    </svg>
+
+                    <p class="prose-serif text-paper-300 text-xl md:text-2xl leading-snug max-w-[36ch] mb-12 rise rise-3">
+                        Stop just <em class="text-paper-50 not-italic font-medium">prompting</em> LLMs. Watch agents build an agent harness — Python execution sandbox, RAG memory, extensible tools — then adapt it to your stack.
+                    </p>
+
+                    <div class="flex flex-col sm:flex-row gap-4 rise rise-4">
+                        <a href="#pricing" class="btn btn-primary">Get a seat <span aria-hidden="true">→</span></a>
+                        <a href="#details" class="btn btn-ghost">Read the brief</a>
+                    </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </header>
 
-    <!-- Requirements & Setup -->
-    <section id="requirements" class="max-w-4xl mx-auto px-6 py-16 border-t border-slate-800/50">
-        <div class="text-center mb-12">
-            <h2 class="text-3xl font-bold text-white mb-4">Before we start</h2>
-            <p class="text-lg max-w-2xl mx-auto">We're building for the full first hour, so your environment has to be ready when we kick off. We won't have time to help you set up live.</p>
+        <!-- Section rule -->
+        <div class="max-w-6xl mx-auto px-6">
+            <div class="rule"><span class="rule-mark">§ 01 · curriculum</span></div>
         </div>
 
-        <div class="grid md:grid-cols-2 gap-8">
-            <!-- Skills -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8">
-                <h3 class="text-xl font-bold text-white mb-4">What you should know</h3>
-                <ul class="space-y-3">
-                    <li class="flex items-start">
-                        <svg class="w-5 h-5 text-brand-400 mr-3 mt-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span>Basic <strong class="text-white">Python</strong> and/or <strong class="text-white">JavaScript / TypeScript</strong> — comfortable reading and writing code, and with how API calls work.</span>
-                    </li>
-                    <li class="flex items-start">
-                        <svg class="w-5 h-5 text-brand-400 mr-3 mt-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span>Access to an LLM. Strongly preferred: an agent harness like <strong class="text-white">Claude Code</strong>, <strong class="text-white">Codex</strong>, or <strong class="text-white">Cursor</strong>.</span>
-                    </li>
-                </ul>
+        <!-- Details Section -->
+        <section id="details" class="max-w-6xl mx-auto px-6 py-24 md:py-28">
+            <div class="grid grid-cols-12 gap-6 md:gap-10">
+                <aside class="col-span-12 md:col-span-3 marginalia">
+                    <span class="num">§ 01</span>
+                    What&nbsp;we're<br>actually&nbsp;doing
+                </aside>
+
+                <div class="col-span-12 md:col-span-9">
+                    <div class="grid lg:grid-cols-12 gap-10 lg:gap-14">
+                        <div class="lg:col-span-7">
+                            <h2 class="display text-paper-50 text-4xl md:text-5xl mb-7">Two hours. <em>One harness.</em> Real code on screen.</h2>
+                            <p class="prose-serif text-lg text-paper-300 mb-4">This isn't a slide deck presentation. It's a 2-hour live implementation session.</p>
+                            <p class="prose-serif text-lg text-paper-300 mb-12">We spend the first hour building together, then a full hour of deep Q&amp;A. The starter codebase is shared at the start of the session — your environment just needs to be ready (see <a href="#requirements" class="ulink">Requirements</a>).</p>
+
+                            <ol class="space-y-7">
+                                <li class="grid grid-cols-[3.6rem_1fr] items-baseline gap-5">
+                                    <span class="display text-ember-500 text-5xl leading-none" style="font-variation-settings:'opsz' 144,'wght' 360;font-style:italic;">01</span>
+                                    <div>
+                                        <div class="cap text-paper-50 mb-1">The Sandbox</div>
+                                        <p class="prose-serif text-paper-300">A Python execution environment running in Docker.</p>
+                                    </div>
+                                </li>
+                                <li class="grid grid-cols-[3.6rem_1fr] items-baseline gap-5">
+                                    <span class="display text-ember-500 text-5xl leading-none" style="font-variation-settings:'opsz' 144,'wght' 360;font-style:italic;">02</span>
+                                    <div>
+                                        <div class="cap text-paper-50 mb-1">The Loop</div>
+                                        <p class="prose-serif text-paper-300">Wiring an LLM to write, run, and read code output.</p>
+                                    </div>
+                                </li>
+                                <li class="grid grid-cols-[3.6rem_1fr] items-baseline gap-5">
+                                    <span class="display text-ember-500 text-5xl leading-none" style="font-variation-settings:'opsz' 144,'wght' 360;font-style:italic;">03</span>
+                                    <div>
+                                        <div class="cap text-paper-50 mb-1">The Memory</div>
+                                        <p class="prose-serif text-paper-300">A RAG database so the agent can look things up.</p>
+                                    </div>
+                                </li>
+                                <li class="grid grid-cols-[3.6rem_1fr] items-baseline gap-5">
+                                    <span class="display text-ember-500 text-5xl leading-none" style="font-variation-settings:'opsz' 144,'wght' 360;font-style:italic;">04</span>
+                                    <div>
+                                        <div class="cap text-paper-50 mb-1">The Handoff</div>
+                                        <p class="prose-serif text-paper-300">Extra tools, then adapting the harness for your stack.</p>
+                                    </div>
+                                </li>
+                            </ol>
+                        </div>
+
+                        <aside class="lg:col-span-5">
+                            <div class="ed-card p-7 lg:sticky lg:top-8">
+                                <div class="flex items-baseline justify-between mb-6">
+                                    <div class="cap text-paper-50">Logistics</div>
+                                    <div class="cap">Δ-V · 01</div>
+                                </div>
+                                <div class="space-y-3">
+                                    <div class="kv"><span class="k">Date</span><span class="leader"></span><span class="v">WORKSHOP_DATE</span></div>
+                                    <div class="kv"><span class="k">Start</span><span class="leader"></span><span class="v">09:00 PT&nbsp;·&nbsp;12:00 ET</span></div>
+                                    <div class="kv"><span class="k">Intl</span><span class="leader"></span><span class="v">17:00 UK&nbsp;·&nbsp;21:30 IST</span></div>
+                                    <div class="kv"><span class="k">Format</span><span class="leader"></span><span class="v">60m Build + 60m Q&amp;A</span></div>
+                                    <div class="kv"><span class="k">Venue</span><span class="leader"></span><span class="v">Zoom (link on purchase)</span></div>
+                                    <div class="kv"><span class="k">Replay</span><span class="leader"></span><span class="v">Included</span></div>
+                                </div>
+                                <div class="mt-7 pt-5 border-t border-ink-800">
+                                    <p class="cap text-paper-500 leading-relaxed">Two hours, end-to-end. Build for the first 60. Ask anything for the next 60.</p>
+                                </div>
+                            </div>
+                        </aside>
+                    </div>
+                </div>
             </div>
+        </section>
 
-            <!-- System setup -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8">
-                <h3 class="text-xl font-bold text-white mb-4">What to install in advance</h3>
-                <ul class="space-y-3">
-                    <li class="flex items-start">
-                        <svg class="w-5 h-5 text-brand-400 mr-3 mt-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span><strong class="text-white">Docker</strong>, installed and running. We won't have time to help you install it.</span>
-                    </li>
-                    <li class="flex items-start">
-                        <svg class="w-5 h-5 text-brand-400 mr-3 mt-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span>A working <strong class="text-white">Python</strong> toolchain — <code class="text-brand-300">python</code> plus <code class="text-brand-300">pip</code> or <code class="text-brand-300">uv</code>.</span>
-                    </li>
-                    <li class="flex items-start">
-                        <svg class="w-5 h-5 text-brand-400 mr-3 mt-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span>A working <strong class="text-white">Node.js</strong> toolchain — <code class="text-brand-300">node</code> plus <code class="text-brand-300">npm</code> (or <code class="text-brand-300">pnpm</code> / <code class="text-brand-300">bun</code>).</span>
-                    </li>
-                    <li class="flex items-start">
-                        <svg class="w-5 h-5 text-brand-400 mr-3 mt-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span><strong class="text-white">Git</strong>, for cloning the starter codebase at the start of the session.</span>
-                    </li>
-                    <li class="flex items-start">
-                        <svg class="w-5 h-5 text-brand-400 mr-3 mt-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span>An <strong class="text-white">API key with credits</strong> on whichever LLM provider you'll use.</span>
-                    </li>
-                </ul>
-                <p class="text-slate-500 text-xs mt-5">Heads up: the sandbox and RAG db each pull a Docker image — a few GB of free disk and some RAM headroom makes things smoother.</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- Pricing Section -->
-    <section id="pricing" class="max-w-6xl mx-auto px-6 py-16 border-t border-slate-800/50">
-        <div class="text-center mb-12">
-            <h2 class="text-3xl font-bold text-white mb-4">Pricing that makes sense globally</h2>
-            <p class="text-lg max-w-2xl mx-auto">I want to make this accessible globally while keeping the session high-signal. Choose the tier that fits your situation.</p>
-        </div>
-
-        <div class="grid md:grid-cols-3 gap-8">
-
-            <!-- Supported Tier -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 flex flex-col">
-                <h3 class="text-xl font-bold text-white mb-2">Supported Seat</h3>
-                <p class="text-slate-400 text-sm mb-6 h-16">For students, new grads, or builders in countries where $99 doesn't map to local purchasing power.</p>
-                <div class="text-4xl font-extrabold text-white mb-6">$29</div>
-                <ul class="space-y-3 mb-8 flex-1 text-sm">
-                    <li class="flex items-center"><svg class="w-4 h-4 text-brand-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Live access + Q&A</li>
-                    <li class="flex items-center"><svg class="w-4 h-4 text-brand-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Starter framework code</li>
-                    <li class="flex items-center"><svg class="w-4 h-4 text-brand-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Unlisted replay + notes</li>
-                </ul>
-                <a href="STRIPE_LINK_SUPPORTED" class="w-full block text-center px-6 py-3 bg-slate-800 text-white font-semibold rounded-lg hover:bg-slate-700 transition">Get Supported Ticket</a>
-            </div>
-
-            <!-- Standard Tier -->
-            <div class="bg-slate-900 border-2 border-brand-500 rounded-2xl p-8 flex flex-col relative transform md:-translate-y-4 shadow-2xl shadow-brand-500/20">
-                <div class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-brand-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Standard</div>
-                <h3 class="text-xl font-bold text-white mb-2">Standard Ticket</h3>
-                <p class="text-slate-400 text-sm mb-6 h-16">For most professional engineers, builders, and technical founders.</p>
-                <div class="text-4xl font-extrabold text-white mb-6">$99</div>
-                <ul class="space-y-3 mb-8 flex-1 text-sm">
-                    <li class="flex items-center"><svg class="w-4 h-4 text-brand-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Live access + Q&A</li>
-                    <li class="flex items-center"><svg class="w-4 h-4 text-brand-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Starter framework code</li>
-                    <li class="flex items-center"><svg class="w-4 h-4 text-brand-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Unlisted replay + notes</li>
-                </ul>
-                <a href="STRIPE_LINK_STANDARD" class="w-full block text-center px-6 py-3 bg-white text-slate-900 font-bold rounded-lg hover:bg-slate-200 transition">Get Standard Ticket</a>
-            </div>
-
-            <!-- Supporter Tier -->
-            <div class="bg-gradient-to-b from-slate-800 to-slate-900 border border-slate-700 rounded-2xl p-8 flex flex-col">
-                <h3 class="text-xl font-bold text-white mb-2">Supporter</h3>
-                <p class="text-slate-400 text-sm mb-6 h-16">For those who want to support my work and subsidize access for others.</p>
-                <div class="text-4xl font-extrabold text-white mb-6">$199</div>
-                <ul class="space-y-3 mb-8 flex-1 text-sm">
-                    <li class="flex items-center"><svg class="w-4 h-4 text-brand-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> All Standard access</li>
-                    <li class="flex items-start"><svg class="w-4 h-4 text-brand-500 mr-2 mt-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> <span><strong>Impact:</strong> Directly sponsors 2 Student/Supported seats.</span></li>
-                    <li class="flex items-start"><svg class="w-4 h-4 text-brand-500 mr-2 mt-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> <span class="text-brand-300">Unlocks a free 60m "New Grad Clinic" next week if we hit 10 supporters.</span></li>
-                </ul>
-                <a href="STRIPE_LINK_SUPPORTER" class="w-full block text-center px-6 py-3 bg-slate-800 border border-slate-600 text-white font-semibold rounded-lg hover:bg-slate-700 transition">Become a Supporter</a>
-            </div>
-
+        <!-- Section rule -->
+        <div class="max-w-6xl mx-auto px-6">
+            <div class="rule"><span class="rule-mark">§ 02 · prerequisites</span></div>
         </div>
 
-        <!-- Express interest (secondary path: just sends an email) -->
-        <div class="mt-12 max-w-2xl mx-auto text-center bg-slate-900/50 border border-slate-800 rounded-2xl px-8 py-8">
-            <h3 class="text-lg font-bold text-white mb-2">Not ready to commit?</h3>
-            <p class="text-slate-400 mb-5 text-sm">Drop me a line and I'll add you to the list. You'll get the date confirmation, the starter framework preview, and an early-bird heads-up before tickets go live.</p>
-            <a href="mailto:WORKSHOP_EMAIL?subject=Workshop%20interest%20%E2%80%94%20Agents%20Building%20Agents&body=Hi%2C%0A%0AI%27d%20like%20to%20be%20notified%20about%20the%20Agents%20Building%20Agents%20workshop.%0A%0AName%3A%0ATimezone%3A%0ANotes%2Fquestions%3A%0A%0AThanks%21" class="inline-block px-6 py-3 bg-slate-800 border border-slate-700 text-white font-semibold rounded-lg hover:bg-slate-700 transition">
-                Express interest
-            </a>
-            <div class="flex items-center justify-center gap-3 mt-4 flex-wrap">
-                <p class="text-slate-500 text-xs">Or email <a href="mailto:WORKSHOP_EMAIL" id="workshop-email" class="text-brand-400 hover:text-brand-300">WORKSHOP_EMAIL</a> directly.</p>
-                <button type="button" onclick="copyWorkshopEmail(this)" class="text-xs px-3 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white transition">Copy address</button>
+        <!-- Requirements & Setup -->
+        <section id="requirements" class="max-w-6xl mx-auto px-6 py-24 md:py-28">
+            <div class="grid grid-cols-12 gap-6 md:gap-10">
+                <aside class="col-span-12 md:col-span-3 marginalia">
+                    <span class="num">§ 02</span>
+                    Before&nbsp;we&nbsp;start
+                </aside>
+
+                <div class="col-span-12 md:col-span-9">
+                    <h2 class="display text-paper-50 text-4xl md:text-5xl mb-5">Show up <em>ready</em>.</h2>
+                    <p class="prose-serif text-lg text-paper-300 mb-12 max-w-[58ch]">We're building for the full first hour, so your environment has to be ready when we kick off. We won't have time to help you set up live.</p>
+
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="ed-card p-7">
+                            <div class="cap text-paper-50 mb-5">A · What you should know</div>
+                            <ul class="space-y-4 prose-serif text-paper-300">
+                                <li class="flex gap-3">
+                                    <span class="text-ember-500 mt-[0.45em] leading-none font-mono text-xs">▸</span>
+                                    <span>Basic <span class="text-paper-50 font-medium">Python</span> and/or <span class="text-paper-50 font-medium">JavaScript / TypeScript</span> — comfortable reading and writing code, and with how API calls work.</span>
+                                </li>
+                                <li class="flex gap-3">
+                                    <span class="text-ember-500 mt-[0.45em] leading-none font-mono text-xs">▸</span>
+                                    <span>Access to an LLM. Strongly preferred: an agent harness like <span class="text-paper-50 font-medium">Claude Code</span>, <span class="text-paper-50 font-medium">Codex</span>, or <span class="text-paper-50 font-medium">Cursor</span>.</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="ed-card p-7">
+                            <div class="cap text-paper-50 mb-5">B · What to install in advance</div>
+                            <ul class="space-y-4 prose-serif text-paper-300">
+                                <li class="flex gap-3">
+                                    <span class="text-ember-500 mt-[0.45em] leading-none font-mono text-xs">▸</span>
+                                    <span><span class="text-paper-50 font-medium">Docker</span>, installed and running. We won't have time to help you install it.</span>
+                                </li>
+                                <li class="flex gap-3">
+                                    <span class="text-ember-500 mt-[0.45em] leading-none font-mono text-xs">▸</span>
+                                    <span>A working <span class="text-paper-50 font-medium">Python</span> toolchain — <code class="font-mono text-sm text-ember-300">python</code> plus <code class="font-mono text-sm text-ember-300">pip</code> or <code class="font-mono text-sm text-ember-300">uv</code>.</span>
+                                </li>
+                                <li class="flex gap-3">
+                                    <span class="text-ember-500 mt-[0.45em] leading-none font-mono text-xs">▸</span>
+                                    <span>A working <span class="text-paper-50 font-medium">Node.js</span> toolchain — <code class="font-mono text-sm text-ember-300">node</code> plus <code class="font-mono text-sm text-ember-300">npm</code> (or <code class="font-mono text-sm text-ember-300">pnpm</code> / <code class="font-mono text-sm text-ember-300">bun</code>).</span>
+                                </li>
+                                <li class="flex gap-3">
+                                    <span class="text-ember-500 mt-[0.45em] leading-none font-mono text-xs">▸</span>
+                                    <span><span class="text-paper-50 font-medium">Git</span>, for cloning the starter codebase at the start of the session.</span>
+                                </li>
+                                <li class="flex gap-3">
+                                    <span class="text-ember-500 mt-[0.45em] leading-none font-mono text-xs">▸</span>
+                                    <span>An <span class="text-paper-50 font-medium">API key with credits</span> on whichever LLM provider you'll use.</span>
+                                </li>
+                            </ul>
+                            <p class="cap mt-6 pt-5 border-t border-ink-800 text-paper-500 leading-relaxed normal-case tracking-normal" style="text-transform:none;letter-spacing:0.03em;font-size:0.72rem;">
+                                <span class="text-ember-500">!</span>&nbsp;&nbsp;Heads up: the sandbox and RAG db each pull a Docker image — a few GB of free disk and some RAM headroom makes things smoother.
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
+        </section>
+
+        <!-- Section rule -->
+        <div class="max-w-6xl mx-auto px-6">
+            <div class="rule"><span class="rule-mark">§ 03 · tickets</span></div>
         </div>
-    </section>
+
+        <!-- Pricing Section -->
+        <section id="pricing" class="max-w-6xl mx-auto px-6 py-24 md:py-28">
+            <div class="grid grid-cols-12 gap-6 md:gap-10">
+                <aside class="col-span-12 md:col-span-3 marginalia">
+                    <span class="num">§ 03</span>
+                    Tiers
+                </aside>
+
+                <div class="col-span-12 md:col-span-9">
+                    <h2 class="display text-paper-50 text-4xl md:text-5xl mb-5">Pricing that makes sense <em>globally</em>.</h2>
+                    <p class="prose-serif text-lg text-paper-300 mb-12 max-w-[58ch]">I want to make this accessible globally while keeping the session high-signal. Choose the tier that fits your situation.</p>
+
+                    <div class="grid md:grid-cols-3 gap-px bg-ink-800">
+
+                        <!-- Supported -->
+                        <div class="price-card ed-card p-8 flex flex-col relative !border-0">
+                            <span class="top-rule"></span>
+                            <div class="flex items-baseline justify-between mb-7">
+                                <span class="cap text-paper-50">01 / Supported</span>
+                                <span class="cap">Student · Global</span>
+                            </div>
+                            <p class="prose-serif text-paper-300 text-sm mb-8 min-h-[4.5rem]">For students, new grads, or builders in countries where $99 doesn't map to local purchasing power.</p>
+                            <div class="mb-8 flex items-baseline gap-1">
+                                <span class="text-ember-500 text-2xl price-num">$</span>
+                                <span class="text-paper-50 text-6xl price-num">29</span>
+                            </div>
+                            <ul class="space-y-3 mb-9 flex-1 prose-serif text-paper-300 text-[0.95rem]">
+                                <li class="flex gap-3"><span class="text-ember-500 font-mono text-xs mt-[0.4em]">▸</span><span>Live access + Q&amp;A</span></li>
+                                <li class="flex gap-3"><span class="text-ember-500 font-mono text-xs mt-[0.4em]">▸</span><span>Starter framework code</span></li>
+                                <li class="flex gap-3"><span class="text-ember-500 font-mono text-xs mt-[0.4em]">▸</span><span>Unlisted replay + notes</span></li>
+                            </ul>
+                            <a href="STRIPE_LINK_SUPPORTED" class="btn btn-ghost w-full">Get supported ticket</a>
+                        </div>
+
+                        <!-- Standard -->
+                        <div class="price-card ed-card featured p-8 flex flex-col relative !border-0">
+                            <span class="top-rule"></span>
+                            <span class="absolute -top-3 left-8 bg-ember-500 text-ink-950 px-2.5 py-1 cap text-[0.62rem] font-mono font-semibold tracking-[0.2em]" style="letter-spacing:0.2em;">★ Recommended</span>
+                            <div class="flex items-baseline justify-between mb-7">
+                                <span class="cap text-paper-50">02 / Standard</span>
+                                <span class="cap">Engineer · Founder</span>
+                            </div>
+                            <p class="prose-serif text-paper-300 text-sm mb-8 min-h-[4.5rem]">For most professional engineers, builders, and technical founders.</p>
+                            <div class="mb-8 flex items-baseline gap-1">
+                                <span class="text-ember-500 text-2xl price-num">$</span>
+                                <span class="text-paper-50 text-6xl price-num">99</span>
+                            </div>
+                            <ul class="space-y-3 mb-9 flex-1 prose-serif text-paper-300 text-[0.95rem]">
+                                <li class="flex gap-3"><span class="text-ember-500 font-mono text-xs mt-[0.4em]">▸</span><span>Live access + Q&amp;A</span></li>
+                                <li class="flex gap-3"><span class="text-ember-500 font-mono text-xs mt-[0.4em]">▸</span><span>Starter framework code</span></li>
+                                <li class="flex gap-3"><span class="text-ember-500 font-mono text-xs mt-[0.4em]">▸</span><span>Unlisted replay + notes</span></li>
+                            </ul>
+                            <a href="STRIPE_LINK_STANDARD" class="btn btn-primary w-full">Get standard ticket</a>
+                        </div>
+
+                        <!-- Supporter -->
+                        <div class="price-card ed-card p-8 flex flex-col relative !border-0">
+                            <span class="top-rule"></span>
+                            <div class="flex items-baseline justify-between mb-7">
+                                <span class="cap text-paper-50">03 / Supporter</span>
+                                <span class="cap">Patron</span>
+                            </div>
+                            <p class="prose-serif text-paper-300 text-sm mb-8 min-h-[4.5rem]">For those who want to support my work and subsidize access for others.</p>
+                            <div class="mb-8 flex items-baseline gap-1">
+                                <span class="text-ember-500 text-2xl price-num">$</span>
+                                <span class="text-paper-50 text-6xl price-num">199</span>
+                            </div>
+                            <ul class="space-y-3 mb-9 flex-1 prose-serif text-paper-300 text-[0.95rem]">
+                                <li class="flex gap-3"><span class="text-ember-500 font-mono text-xs mt-[0.4em]">▸</span><span>All Standard access</span></li>
+                                <li class="flex gap-3"><span class="text-ember-500 font-mono text-xs mt-[0.4em]">▸</span><span><span class="text-paper-50">Impact:</span> directly sponsors 2 Student / Supported seats.</span></li>
+                                <li class="flex gap-3"><span class="text-ember-500 font-mono text-xs mt-[0.4em]">▸</span><span class="text-ember-300">Unlocks a free 60m "New Grad Clinic" next week if we hit 10 supporters.</span></li>
+                            </ul>
+                            <a href="STRIPE_LINK_SUPPORTER" class="btn btn-ghost w-full">Become a supporter</a>
+                        </div>
+                    </div>
+
+                    <!-- Express interest -->
+                    <div class="mt-12 ed-card p-8 md:p-10 grid md:grid-cols-12 gap-8 items-center">
+                        <div class="md:col-span-7">
+                            <div class="cap mb-3">Not&nbsp;ready&nbsp;to&nbsp;commit?</div>
+                            <h3 class="display text-paper-50 text-2xl md:text-3xl mb-3">Get the <em>early-bird</em> heads-up.</h3>
+                            <p class="prose-serif text-paper-300">Drop me a line and I'll add you to the list. You'll get the date confirmation, the starter framework preview, and a heads-up before tickets go live.</p>
+                        </div>
+                        <div class="md:col-span-5 flex flex-col gap-4 md:items-end">
+                            <a href="mailto:WORKSHOP_EMAIL?subject=Workshop%20interest%20%E2%80%94%20Agents%20Building%20Agents&body=Hi%2C%0A%0AI%27d%20like%20to%20be%20notified%20about%20the%20Agents%20Building%20Agents%20workshop.%0A%0AName%3A%0ATimezone%3A%0ANotes%2Fquestions%3A%0A%0AThanks%21" class="btn btn-ghost">Express interest</a>
+                            <div class="flex items-center gap-3 flex-wrap md:justify-end">
+                                <span class="cap normal-case" style="text-transform:none;letter-spacing:0.04em;">or email</span>
+                                <a href="mailto:WORKSHOP_EMAIL" id="workshop-email" class="ulink font-mono text-sm">WORKSHOP_EMAIL</a>
+                                <button type="button" onclick="copyWorkshopEmail(this)" class="font-mono text-[0.7rem] tracking-[0.18em] uppercase px-3 py-1.5 border border-ink-700 text-paper-300 hover:text-ember-500 hover:border-paper-500 transition">Copy</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section rule -->
+        <div class="max-w-6xl mx-auto px-6">
+            <div class="rule"><span class="rule-mark">§ 04 · q&amp;a</span></div>
+        </div>
+
+        <!-- FAQ -->
+        <section class="max-w-6xl mx-auto px-6 py-24 md:py-28">
+            <div class="grid grid-cols-12 gap-6 md:gap-10">
+                <aside class="col-span-12 md:col-span-3 marginalia">
+                    <span class="num">§ 04</span>
+                    Frequently<br>asked
+                </aside>
+                <div class="col-span-12 md:col-span-9">
+                    <h2 class="display text-paper-50 text-4xl md:text-5xl mb-10">Questions, <em>asked &amp; answered</em>.</h2>
+
+                    <details class="qa">
+                        <summary>Do I need to be a Python expert?</summary>
+                        <div class="ans">No. Basic Python and/or JavaScript / TypeScript is enough — you should be comfortable reading and writing code and understand how API calls work. You don't need to be a machine learning engineer.</div>
+                    </details>
+                    <details class="qa">
+                        <summary>Will you review my specific project?</summary>
+                        <div class="ans">During the 60-minute Q&amp;A, you can ask specific questions about adapting this framework to your use case. Submit your questions early (link provided after checkout) to ensure we get to them.</div>
+                    </details>
+                    <details class="qa">
+                        <summary>What happens after I pay?</summary>
+                        <div class="ans">You'll be redirected to a page with the calendar invite and a quick form to submit your advance questions. The starter codebase is shared at the start of the session — make sure your environment is ready before then (see <a href="#requirements" class="ulink">Requirements</a>).</div>
+                    </details>
+                    <details class="qa">
+                        <summary>What if I can't make it live?</summary>
+                        <div class="ans">All tiers include the unlisted replay and notes. The Q&amp;A questions you submit in advance are answered on the recording even if you watch async.</div>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <!-- Colophon / footer -->
+        <footer class="max-w-6xl mx-auto px-6 pb-16 pt-10 border-t border-ink-800">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="cap">
+                    <span class="text-paper-50">Δ-V</span>&nbsp;&nbsp;Workshop&nbsp;·&nbsp;Agents&nbsp;Building&nbsp;Agents
+                </div>
+                <div class="cap">
+                    WORKSHOP_DATE&nbsp;·&nbsp;<a href="mailto:WORKSHOP_EMAIL" class="ulink">WORKSHOP_EMAIL</a>&nbsp;·&nbsp;© 2026
+                </div>
+            </div>
+            <div class="mt-6 cap text-paper-500 normal-case" style="text-transform:none;letter-spacing:0.04em;">
+                Built live, in front of you. No slides. No filler. Bring questions.
+            </div>
+        </footer>
+    </div>
 
     <script>
         function copyWorkshopEmail(btn) {
             const email = document.getElementById('workshop-email').textContent.trim();
             navigator.clipboard.writeText(email).then(() => {
                 const original = btn.textContent;
-                btn.textContent = 'Copied!';
+                btn.textContent = 'Copied';
                 btn.disabled = true;
                 setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1500);
             });
         }
     </script>
-
-    <!-- FAQ -->
-    <section class="max-w-3xl mx-auto px-6 py-16 border-t border-slate-800/50 mb-12">
-        <h2 class="text-2xl font-bold text-white mb-8 text-center">Frequently Asked Questions</h2>
-        <div class="space-y-6">
-            <div>
-                <h4 class="text-lg font-bold text-white mb-2">Do I need to be a Python expert?</h4>
-                <p class="text-slate-400">No. Basic Python and/or JavaScript/TypeScript is enough — you should be comfortable reading and writing code and understand how API calls work. You don't need to be a machine learning engineer.</p>
-            </div>
-            <div>
-                <h4 class="text-lg font-bold text-white mb-2">Will you review my specific project?</h4>
-                <p class="text-slate-400">During the 60-minute Q&A, you can ask specific questions about adapting this framework to your use case. Submit your questions early (link provided after checkout) to ensure we get to them.</p>
-            </div>
-            <div>
-                <h4 class="text-lg font-bold text-white mb-2">What happens after I pay?</h4>
-                <p class="text-slate-400">You'll be redirected to a page with the calendar invite and a quick form to submit your advance questions. The starter codebase is shared at the start of the session — make sure your environment is ready before then (see <a href="#requirements" class="text-brand-400 hover:text-brand-300">Requirements</a>).</p>
-            </div>
-        </div>
-    </section>
 
 </body>
 </html>
